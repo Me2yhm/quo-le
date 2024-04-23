@@ -6,8 +6,12 @@ name = "pip_conf_index_global"
 [packages]
 cython = "*"
 ctpwrapper = "*"
+requests = "*"
+pandas = "*"
+numpy = "*"
 
 [dev-packages]
+ipykernel = "*"
 
 [requires]
 python_version = "3.11"

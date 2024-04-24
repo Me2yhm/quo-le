@@ -78,9 +78,9 @@ class Client(MdApiPy):
         登出
         """
         login = ReqUserLoginField(
-            BrokerID=broker_id,
-            UserID=user_id,
-            Password=password,
+            BrokerID=self.broker_id,
+            UserID=self.user_id,
+            Password=self.password,
             # MacAddress=quota_front,
         )
         self.ReqUserLogout(login, 0)
@@ -122,15 +122,25 @@ class Client(MdApiPy):
         """
         if check_end_time(self.end_time):
             self.file.close()
+            self.logout()
             self.Release()
         tim = datetime.now()
         tim = ":".join(
-            [str(tim.hour), str(tim.minute), str(tim.second), str(tim.microsecond)]
+            [
+                str(tim.hour),
+                str(tim.minute),
+                "".join([str(tim.second), str(tim.microsecond)[:3]]),
+            ]
         )
-        change_tim = str(pDepthMarketData.UpdateMillisec)
+        change_tim = "".join(
+            [
+                str(pDepthMarketData.UpdateTime),
+                str(pDepthMarketData.UpdateMillisec),
+            ]
+        )
         row = [
             tim,
-            change_tim[-7:],
+            change_tim,
             str(pDepthMarketData.InstrumentID),
             str(pDepthMarketData.LastPrice),
             str(self.id),
@@ -140,26 +150,30 @@ class Client(MdApiPy):
         print("write a row")
 
 
-def main(quota_front, quotaid, subid, endtime="09:10"):
+def main(quota_front, quotaid, subid, file, endtime="09:10"):
     broker_id = config["broker_id"]
     user_id = config["investor_id"]
     password = config["password"]
-    subid = subid
-    today = datetime.today().strftime("%Y-%m-%d")
-    file = open(f"{today}_result.csv", "+a")
     md_api1 = Client(quota_front, broker_id, user_id, password, file, endtime, quotaid)
     md_api1.Create()
     md_api1.RegisterFront(quota_front)
     md_api1.Init()
     md_api1.login()
     md_api1.SubscribeMarketData(subid)
-    md_api1.Join()
+    return md_api1
 
 
 if __name__ == "__main__":
-    end_time = "09:10"
+    end_time = "09:60"
     subid = ["au2406", "ag2406", "sc2406"]
+    # subid = ["au2406"]
     source1 = "tcp://180.168.146.187:10212"
     source2 = "tcp://218.202.237.33:10213"
-    main(source1, "电信2", subid, end_time)
-    main(source2, "移动", subid, end_time)
+    source3 = "tcp://180.168.146.187:10131"
+    today = datetime.today().strftime("%Y-%m-%d")
+    file = open(f"./data/{today}_result.csv", "+a", newline="")
+    md_api1 = main(source1, "电信2", subid, file, end_time)
+    md_api2 = main(source2, "移动", subid, file, end_time)
+    # md_api3=main(source3, "allday", subid,file, end_time)
+    md_api1.Join()
+    md_api2.join()

@@ -1,3 +1,4 @@
+from datetime import date
 import pandas as pd
 import numpy as np
 
@@ -184,7 +185,8 @@ if __name__ == "__main__":
         "-----测试的行情源有两个，分别是simnow的电信源2和移动源，测试了三个品种。-----"
     )
     print()
-    date = "2024-04-24"
+    today = date.today()
+    date = f"{today.year}-{today.month:>02d}-{today.day:>02d}"
     get_test_data(date)
     au_m, au_std, au_te, au_mo = sorce_diff(date, "au2406")
     sc_m, sc_std, sc_te, sc_mo = sorce_diff(date, "sc2406")

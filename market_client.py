@@ -129,7 +129,7 @@ class Client(MdApiPy):
             [
                 str(tim.hour),
                 str(tim.minute),
-                "".join([str(tim.second), str(tim.microsecond)[:3]]),
+                "".join([str(tim.second).zfill(2), str(tim.microsecond)[:3]]),
             ]
         )
         change_tim = "".join(
@@ -164,16 +164,16 @@ def main(quota_front, quotaid, subid, file, endtime="09:10"):
 
 
 if __name__ == "__main__":
-    end_time = "09:60"
+    end_time = "14:25"
     subid = ["au2406", "ag2406", "sc2406"]
     # subid = ["au2406"]
-    source1 = "tcp://180.168.146.187:10212"
-    source2 = "tcp://218.202.237.33:10213"
-    source3 = "tcp://180.168.146.187:10131"
+    source1 = "tcp://101.226.253.177:61213"
+    source2 = "tcp://140.207.230.97:61213"
+    source3 = "cp://192.168.112.29:61213"
     today = datetime.today().strftime("%Y-%m-%d")
     file = open(f"./data/{today}_result.csv", "+a", newline="")
     md_api1 = main(source1, "电信2", subid, file, end_time)
     md_api2 = main(source2, "移动", subid, file, end_time)
     # md_api3=main(source3, "allday", subid,file, end_time)
     md_api1.Join()
-    md_api2.join()
+    md_api2.Join()

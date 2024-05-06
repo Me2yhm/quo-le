@@ -9,6 +9,9 @@ ctpwrapper = "*"
 requests = "*"
 pandas = "*"
 numpy = "*"
+clickhouse-driver = "*"
+polars = "*"
+pyarrow = "*"
 
 [dev-packages]
 ipykernel = "*"

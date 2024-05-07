@@ -64,145 +64,183 @@ def get_second_first(times):
     return scecond_first
 
 
-def get_common_second(times1, times2):
-    commn_sec = set([t[:8] for t in times1]) & set([t[:8] for t in times2])
-    times1 = [t for t in times1 if t[:8] in commn_sec]
-    times2 = [t for t in times2 if t[:8] in commn_sec]
-    return times1, times2
+def get_common_second(times):
+    times_set = [set([t[:8] for t in tim]) for tim in times]
+    commn_sec = times_set[0].intersection(*times_set[1:])
+    com_times = [[t for t in tim if t[:8] in commn_sec] for tim in times]
+    return com_times
+
+
+def get_diff(df: pd.DataFrame, sours: list[str]) -> pd.DataFrame:
+    diffs = []
+    change_diffs = []
+    change_tele_diff = (
+        df[f"{sours[0]}_time"].apply(str_to_time).values
+        - df["change_time"].apply(str_to_time).values
+    )
+    change_diffs.append(change_tele_diff)
+    for sour in sours[1:]:
+        sourc_diff = (
+            df[f"{sours[0]}_time"].apply(str_to_time).values
+            - df[f"{sour}_time"].apply(str_to_time).values
+        )
+        change_diff = (
+            df[f"{sour}_time"].apply(str_to_time).values
+            - df["change_time"].apply(str_to_time).values
+        )
+        diffs.append(sourc_diff)
+        change_diffs.append(change_diff)
+    return diffs, change_diffs
 
 
 def get_test_data(filename):
+    def trans_col_name(cols, sorce):
+        return [
+            (
+                f"{sorce}_{col}"
+                if col not in ["future", "change_time", "lastprice"]
+                else col
+            )
+            for col in cols
+        ]
+
     file = f"./data/{filename}_result.csv"
     au_data = pd.read_csv(
         file,
         names=["time", "change_time", "future", "lastprice", "source"],
         encoding="gbk",
     ).dropna()
-    tele, move = au_data.groupby(by="source")
-    tele_diff = tele[1]
-    move_diff = move[1]
-    merge_df = tele_diff.merge(
-        move_diff, how="right", on=["change_time", "future", "lastprice"]
-    ).dropna()
+    can_merg = False
+    sours = []
+    for source, group in au_data.groupby(by="source"):
+        group.columns = trans_col_name(group.columns, source)
+        sours.append(source)
+        if not can_merg:
+            merge_df = group
+            can_merg = True
+            continue
+        merge_df = pd.merge(
+            merge_df, group, how="right", on=["change_time", "future", "lastprice"]
+        ).dropna()
     merge_df.to_csv(f"./data/{filename}_test.csv")
     product_group = list(merge_df.groupby(by="future"))
     for product, group in product_group:
         group.reset_index(drop=True).to_csv(f"./data/{filename}_{product}.csv")
-    sourc_diff = (
-        merge_df["time_x"].apply(str_to_time).values
-        - merge_df["time_y"].apply(str_to_time).values
-    )
-    change_tele_diff = (
-        merge_df["time_x"].apply(str_to_time).values
-        - merge_df["change_time"].apply(str_to_time).values
-    )
-    change_move_diff = (
-        merge_df["time_y"].apply(str_to_time).values
-        - merge_df["change_time"].apply(str_to_time).values
-    )
+    diffs, change_diffs = get_diff(merge_df, sours)
     print(f"------总时差——{filename}------")
-    print(
-        f"电信源2和移动源的平均时差： {np.mean(sourc_diff):.2f} ms, 标准差为： {np.std(sourc_diff):.2f}"
-    )
-    print(
-        f"电信源2和交易所平均时差： {np.mean(change_tele_diff):.2f} ms, 移动源和交易所平均时差： {np.mean(change_move_diff):.2f} ms"
-    )
+    mean_diff = []
+    std_diff = []
+    mean_change = []
+    std_change = []
+    for i in range(len(sours)):
+        if i > 0:
+            print(
+                f"{sours[i]}源和{sours[0]}源的平均时差： {np.mean(diffs[i-1]):.2f} ms, 标准差为： {np.std(diffs[i-1]):.2f}"
+            )
+            mean_diff.append(np.mean(diffs[i - 1]))
+            std_diff.append(np.std(diffs[i - 1]))
+        print(
+            f"{sours[i]}源和交易所平均时差： {np.mean(change_diffs[i]):.2f} ms, 标准差为： {np.std(change_diffs[i]):.2f} ms"
+        )
+        print()
+        mean_change.append(np.mean(change_diffs[i]))
+        std_change.append(np.std(change_diffs[i]))
     return (
-        np.mean(sourc_diff),
-        np.std(sourc_diff),
-        np.mean(change_tele_diff),
-        np.mean(change_move_diff),
+        mean_diff,
+        std_diff,
+        mean_change,
+        std_change,
     )
 
 
-def sorce_diff(filename, product):
+def sorce_diff(filename, product, source):
     file = f"./data/{filename}_{product}.csv"
     dat = pd.read_csv(
         file,
         header=0,
         encoding="gbk",
     )
-    sourc_diff = (
-        dat["time_x"].apply(str_to_time).values
-        - dat["time_y"].apply(str_to_time).values
-    )
-    change_tele_diff = (
-        dat["time_x"].apply(str_to_time).values
-        - dat["change_time"].apply(str_to_time).values
-    )
-    change_move_diff = (
-        dat["time_y"].apply(str_to_time).values
-        - dat["change_time"].apply(str_to_time).values
-    )
-    print(f"------品种{product}------")
-    print(
-        f"电信源2和移动源的平均时差： {np.mean(sourc_diff):.2f} ms, 标准差为： {np.std(sourc_diff):.2f}"
-    )
-    print(
-        f"电信源2和交易所平均时差： {np.mean(change_tele_diff):.2f} ms, 移动源和交易所平均时差： {np.mean(change_move_diff):.2f} ms"
-    )
+    diffs, change_diffs = get_diff(dat, source)
+    mean_diff = []
+    std_diff = []
+    mean_change = []
+    std_change = []
+    print(f"------品种 {product}------")
+    for i in range(len(source)):
+        if i > 0:
+            print(
+                f"{source[i]}源和{source[0]}源的平均时差： {np.mean(diffs[i-1]):.2f} ms, 标准差为： {np.std(diffs[i-1]):.2f}"
+            )
+            mean_diff.append(np.mean(diffs[i - 1]))
+            std_diff.append(np.std(diffs[i - 1]))
+        print(
+            f"{source[i]}源和交易所平均时差： {np.mean(change_diffs[i]):.2f} ms, 标准差为： {np.std(change_diffs[i]):.2f} ms"
+        )
+        print()
+        mean_change.append(np.mean(change_diffs[i]))
+        std_change.append(np.std(change_diffs[i]))
     return (
-        np.mean(sourc_diff),
-        np.std(sourc_diff),
-        np.mean(change_tele_diff),
-        np.mean(change_move_diff),
+        mean_diff,
+        std_diff,
+        mean_change,
+        std_change,
     )
 
 
-def product_diff(filename, product1, product2):
-    file1 = f"./data/{filename}_{product1}.csv"
-    file2 = f"./data/{filename}_{product2}.csv"
-    dat1 = pd.read_csv(
-        file1,
-        header=0,
-        encoding="gbk",
-    )
-    dat2 = pd.read_csv(
-        file2,
-        header=0,
-        encoding="gbk",
-    )
-    product1_tim = dat1["change_time"].values
-    product2_tim = dat2["change_time"].values
-    product1_tim, product2_tim = get_common_second(product1_tim, product2_tim)
-    product1_tim = get_second_first(product1_tim)
-    product2_tim = get_second_first(product2_tim)
-    diff = []
-    for i in range(len(product1_tim)):
-        diff.append(str_to_time(product1_tim[i]) - str_to_time(product2_tim[i]))
-    print(f"------品种 {product1,product2}------")
-    print(
-        f"{product1}和{product1}的平均时差： {np.mean(diff):.2f} ms, 标准差为： {np.std(diff):.2f}"
-    )
+def product_diff(filename, products):
+    pro_tims = []
+    for product in products:
+        file = f"./data/{filename}_{product}.csv"
+        dat = pd.read_csv(
+            file,
+            header=0,
+            encoding="gbk",
+        )
+        product_tim = dat["change_time"].values
+        pro_tims.append(product_tim)
+
+    com_tims = get_common_second(pro_tims)
+    times = [get_second_first(tim) for tim in com_tims]
+    print(f"------{len(products)}个品种 ------")
+    mean_diff = []
+    std_diff = []
+    for i in range(len(products)):
+        diff = []
+        for j in range(len(times[i])):
+            diff.append(str_to_time(times[i][j]) - str_to_time(times[0][j]))
+        print(
+            f"{products[i]}和{products[0]}的平均时差： {np.mean(diff):.2f} ms, 标准差为： {np.std(diff):.2f}"
+        )
+        mean_diff.append(np.mean(diff))
+        std_diff.append(np.std(diff))
     return (
-        np.mean(diff),
-        np.std(diff),
+        mean_diff,
+        std_diff,
     )
 
 
 if __name__ == "__main__":
+    subid = ["au2406", "ag2406", "sc2406"]
+    source = ["tele1", "unicom1", "gigabit", "10_gigabit"]
     print(
-        "-----测试的行情源有两个，分别是simnow的电信源2和移动源，测试了三个品种。-----"
+        f"-----测试的行情源有{len(source)}个，分别是simnow的电信源2和移动源，测试了{len(source)}个品种。-----"
     )
     print()
     today = date.today()
-    date = f"{today.year}-{today.month:>02d}-{today.day:>02d}"
-    get_test_data(date)
-    au_m, au_std, au_te, au_mo = sorce_diff(date, "au2406")
-    sc_m, sc_std, sc_te, sc_mo = sorce_diff(date, "sc2406")
-    ag_m, ag_std, ag_te, ag_mo = sorce_diff(date, "ag2406")
-    au_ag_mean, au_ag_std = product_diff(date, "au2406", "ag2406")
-    sc_ag_mean, sc_ag_std = product_diff(date, "sc2406", "ag2406")
-    ag_ag_mean, ag_ag_std = product_diff(date, "ag2406", "ag2406")
-    df = pd.DataFrame(
-        {
-            "futrue": ["au2406", "sc2406", "ag2406"],
-            "mean (ms)": [au_m, sc_m, ag_m],
-            "std (ms)": [au_std, sc_std, ag_std],
-            "source_ct (ms)": [au_te, sc_te, ag_te],
-            "sourc_cmcc (ms)": [au_mo, sc_mo, ag_mo],
-            "ag_diff (ms)": [au_ag_mean, sc_ag_mean, ag_ag_mean],
-        }
-    )
+    to_date = f"{today.year}-{today.month:>02d}-{today.day:>02d}"
+    sourc_diffs = []
+    get_test_data(to_date)
+    for por in subid:
+        sourc_diff = sorce_diff(to_date, por, source)
+        sourc_diffs.append(sourc_diff)
+    mean_pro, std_pro = product_diff(to_date, subid)
+    data1 = {
+        "futrue": subid,
+        f"{subid[0]}_diff": mean_pro,
+    }
+    sors = [so + "(ms)" for so in source]
+    for i in range(len(sors)):
+        data1[sors[i]] = [s[2][i] for s in sourc_diffs]
+    df1 = pd.DataFrame(data1)
     print("-----汇总-----")
-    print(df)
+    print(df1)

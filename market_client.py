@@ -89,13 +89,14 @@ class Client(MdApiPy):
         """
         订阅合约代码
         """
+        self.subid = codes
         return self.SubscribeMarketData(codes)
 
     def unsubscribe(self, codes):
         """
         取消订阅
         """
-        pass
+        return self.UnSubscribeMarketData(codes)
 
     def OnRspSubMarketData(
         self, pSpecificInstrument, pRspInfo, nRequestID, bIsLast
@@ -122,6 +123,7 @@ class Client(MdApiPy):
         """
         if check_end_time(self.end_time):
             self.file.close()
+            self.unsubscribe(self.subid)
             self.logout()
             self.Release()
         tim = datetime.now()
@@ -155,6 +157,7 @@ def main(quota_front, quotaid, subid, file, endtime="09:10"):
     user_id = config["investor_id"]
     password = config["password"]
     md_api1 = Client(quota_front, broker_id, user_id, password, file, endtime, quotaid)
+    md_api1.subid = subid
     md_api1.Create()
     md_api1.RegisterFront(quota_front)
     md_api1.Init()
@@ -164,16 +167,21 @@ def main(quota_front, quotaid, subid, file, endtime="09:10"):
 
 
 if __name__ == "__main__":
-    end_time = "14:25"
+    end_time = "13:42"
     subid = ["au2406", "ag2406", "sc2406"]
     # subid = ["au2406"]
     source1 = "tcp://101.226.253.177:61213"
     source2 = "tcp://140.207.230.97:61213"
-    source3 = "cp://192.168.112.29:61213"
+    source3 = "tcp://192.168.112.29:61213"
+    source4 = "tcp://tcp://10.10.16.29:61213"
     today = datetime.today().strftime("%Y-%m-%d")
     file = open(f"./data/{today}_result.csv", "+a", newline="")
-    md_api1 = main(source1, "电信2", subid, file, end_time)
-    md_api2 = main(source2, "移动", subid, file, end_time)
+    md_api1 = main(source1, "tele1", subid, file, end_time)
+    md_api2 = main(source2, "unicom1", subid, file, end_time)
+    md_api3 = main(source2, "gigabit", subid, file, end_time)
+    md_api4 = main(source2, "10_gigabit", subid, file, end_time)
     # md_api3=main(source3, "allday", subid,file, end_time)
     md_api1.Join()
     md_api2.Join()
+    md_api3.Join()
+    md_api4.Join()

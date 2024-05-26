@@ -2,7 +2,7 @@ import sys
 import math
 import csv
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from ctpwrapper import MdApiPy, MdApi
 from ctpwrapper.ApiStructure import ReqUserLoginField
@@ -110,9 +110,7 @@ class Client(MdApiPy):
         :return:
         """
 
-        # print(
-        #     f"Time: {timestamp_to_datetime(time.time())},InstrumentID={pSpecificInstrument.InstrumentID},{nRequestID}"
-        # )
+        print(f"InstrumentID={pSpecificInstrument.InstrumentID}, pRspInfo={pRspInfo}")
         pass
 
     def OnRtnDepthMarketData(self, pDepthMarketData) -> None:
@@ -125,6 +123,7 @@ class Client(MdApiPy):
             self.file.close()
             self.unsubscribe(self.subid)
             self.logout()
+            # sys.exit(0)
             self.Release()
         tim = datetime.now()
         tim = ":".join(
@@ -152,8 +151,9 @@ class Client(MdApiPy):
         print("write a row")
 
 
-def main(quota_front, quotaid, subid, file, endtime="09:10"):
-    broker_id = config["broker_id"]
+def main(quota_front, quotaid, subid, file, minute=10, broker_id=None):
+    endtime = (datetime.today() + timedelta(minutes=minute)).strftime("%H:%M")
+    broker_id = broker_id or config["broker_id"]
     user_id = config["investor_id"]
     password = config["password"]
     md_api1 = Client(quota_front, broker_id, user_id, password, file, endtime, quotaid)
@@ -167,21 +167,22 @@ def main(quota_front, quotaid, subid, file, endtime="09:10"):
 
 
 if __name__ == "__main__":
-    end_time = "13:42"
+    end_time = int(sys.argv[1]) if len(sys.argv) > 1 else 10
     subid = ["au2406", "ag2406", "sc2406"]
-    # subid = ["au2406"]
     source1 = "tcp://101.226.253.177:61213"
     source2 = "tcp://140.207.230.97:61213"
     source3 = "tcp://192.168.112.29:61213"
-    source4 = "tcp://tcp://10.10.16.29:61213"
+    source4 = "tcp://10.10.16.29:61213"
+    source5 = "tcp://180.169.75.18:61213"
     today = datetime.today().strftime("%Y-%m-%d")
     file = open(f"./data/{today}_result.csv", "+a", newline="")
-    md_api1 = main(source1, "tele1", subid, file, end_time)
-    md_api2 = main(source2, "unicom1", subid, file, end_time)
-    md_api3 = main(source2, "gigabit", subid, file, end_time)
-    md_api4 = main(source2, "10_gigabit", subid, file, end_time)
-    # md_api3=main(source3, "allday", subid,file, end_time)
+    md_api1 = main(source1, "dz_tele1", subid, file, end_time)
+    md_api2 = main(source2, "dz_unicom1", subid, file, end_time)
+    # md_api3 = main(source3, "gigabit", subid, file, end_time)
+    # md_api4 = main(source4, "10_gigabit", subid, file, end_time)
+    md_api5 = main(source5, "gjqh", subid, file, end_time, "7090")
     md_api1.Join()
     md_api2.Join()
-    md_api3.Join()
-    md_api4.Join()
+    # md_api3.Join()
+    # md_api4.Join()
+    md_api5.Join()

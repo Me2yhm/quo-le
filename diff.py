@@ -74,13 +74,13 @@ def get_common_second(times):
 def get_diff(df: pd.DataFrame, sours: list[str]) -> pd.DataFrame:
     diffs = []
     change_diffs = []
-    change_tele_diff = (
+    change_tele_diff = -(
         df[f"{sours[0]}_time"].apply(str_to_time).values
         - df["change_time"].apply(str_to_time).values
     )
     change_diffs.append(change_tele_diff)
     for sour in sours[1:]:
-        sourc_diff = (
+        sourc_diff = -(
             df[f"{sours[0]}_time"].apply(str_to_time).values
             - df[f"{sour}_time"].apply(str_to_time).values
         )
@@ -135,7 +135,7 @@ def get_test_data(filename):
     for i in range(len(sours)):
         if i > 0:
             print(
-                f"{sours[i]}源和{sours[0]}源的平均时差： {np.mean(diffs[i-1]):.2f} ms, 标准差为： {np.std(diffs[i-1]):.2f}"
+                f"{sours[i]}源和{sours[0]}源的平均时差： {np.mean(diffs[i-1]):.2f} ms, 标准差为： {np.std(diffs[i-1]):.2f} ms"
             )
             mean_diff.append(np.mean(diffs[i - 1]))
             std_diff.append(np.std(diffs[i - 1]))
@@ -150,6 +150,7 @@ def get_test_data(filename):
         std_diff,
         mean_change,
         std_change,
+        sours,
     )
 
 
@@ -221,15 +222,21 @@ def product_diff(filename, products):
 
 if __name__ == "__main__":
     subid = ["au2406", "ag2406", "sc2406"]
-    source = ["tele1", "unicom1", "gigabit", "10_gigabit"]
+    orin_source = ["tele1", "unicom1", "gigabit", "10_gigabit"]
     print(
-        f"-----测试的行情源有{len(source)}个，分别是simnow的电信源2和移动源，测试了{len(source)}个品种。-----"
+        f"-----测试的行情源有{len(orin_source)}个，分别是simnow的电信源2和移动源，测试了{len(subid)}个品种。-----"
     )
     print()
     today = date.today()
     to_date = f"{today.year}-{today.month:>02d}-{today.day:>02d}"
     sourc_diffs = []
-    get_test_data(to_date)
+    *_, source = get_test_data(to_date)
+    loss_sor = []
+    for sor in orin_source:
+        if sor not in source:
+            loss_sor.append(sor)
+    if loss_sor:
+        print(f"行情源{loss_sor}无数据响应，请检查。")
     for por in subid:
         sourc_diff = sorce_diff(to_date, por, source)
         sourc_diffs.append(sourc_diff)
